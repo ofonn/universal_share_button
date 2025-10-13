@@ -51,7 +51,7 @@ JOIN Check it Out6`;
       /**
        * Copies content to the clipboard using the document.execCommand fallback.
        * @param {string} content The text to copy.
-       * @returns {Promise<boolean>} True if copy was successful, false otherwise.
+       * @returns {boolean} True if copy was successful, false otherwise.
        */
       function copyContent(content) {
         try {
@@ -78,7 +78,7 @@ JOIN Check it Out6`;
        */
       function showMessage(message, color) {
         const messageBox = document.getElementById("message-box");
-        messageBox.textContent = message;
+        messageBox.innerHTML = message; // Use innerHTML to allow for bold tags
         messageBox.className = `p-3 mb-4 rounded-lg text-sm font-semibold text-white ${color}`;
         messageBox.classList.remove("hidden");
 
@@ -111,12 +111,13 @@ JOIN Check it Out6`;
         );
       }
 
-      /** Shares content via Discord (Copy to Clipboard) */
+      /** Shares content via Discord (Copy to Clipboard and App Open) */
       function shareDiscord() {
         const success = copyContent(contentToShare);
         if (success) {
+          // New logic: Copy and instruct the user to paste
           showMessage(
-            "Content copied! Paste it directly into Discord.",
+            "Content **copied**! Opening Discord. Paste the message directly into your channel.",
             "bg-discord"
           );
         } else {
@@ -125,19 +126,34 @@ JOIN Check it Out6`;
             "bg-red-500"
           );
         }
+
+        // Open the Discord web app/redirection page
+        window.open("https://discord.com/app", "_blank");
       }
 
-      /** Shares content via Signal (Deep Link) */
+      /** Shares content via Signal (Copy to Clipboard and Deep Link) */
       function shareSignal() {
-        // New approach: Use the official signal.me universal link, which reliably
-        // attempts to open the app or provides a web fallback.
+        const success = copyContent(contentToShare);
+        if (success) {
+          // New logic: Copy and explicitly instruct the user to paste
+          showMessage(
+            "Content **copied**! Now, paste it into a group on Signal.",
+            "bg-signal"
+          );
+        } else {
+          showMessage(
+            "Copy failed. Attempting to open Signal, please manually copy the text below.",
+            "bg-red-500"
+          );
+        }
+
+        // Open the official signal.me universal link
         window.open(
           `https://signal.me/share/text?text=${encodeURIComponent(
             contentToShare
           )}`,
           "_blank"
         );
-        showMessage("Attempting to share via Signal...", "bg-signal");
       }
     </script>
   </head>
