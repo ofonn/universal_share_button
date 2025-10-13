@@ -129,14 +129,12 @@ JOIN Check it Out6`;
 
       /** Shares content via Signal (Deep Link) */
       function shareSignal() {
-        // Signal uses a deep link scheme
-        window.open(
-          `signalprotocol.org/uri/v1/send?text=${encodeURIComponent(
-            contentToShare
-          )}`,
-          "_blank"
-        );
-        showMessage("Opening Signal App...", "bg-signal");
+        // Signal uses a deep link scheme (sgnl://) which is often more reliable
+        // for opening the native application than the previous web-based link.
+        window.location.href = `sgnl://send?text=${encodeURIComponent(
+          contentToShare
+        )}`;
+        showMessage("Attempting to open Signal App...", "bg-signal");
       }
     </script>
   </head>
