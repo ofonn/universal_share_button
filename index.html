@@ -115,45 +115,70 @@ JOIN Check it Out6`;
       function shareDiscord() {
         const success = copyContent(contentToShare);
         if (success) {
-          // New logic: Copy and instruct the user to paste
+          // Copy successful: Show message and delay the app opening
           showMessage(
-            "Content **copied**! Opening Discord. Paste the message directly into your channel.",
+            "Content **copied**! Opening Discord in 1 second. Paste the message directly into your channel.",
             "bg-discord"
           );
+
+          // Delay opening Discord by 1 second
+          setTimeout(() => {
+            window.open("https://discord.com/app", "_blank");
+          }, 1000);
         } else {
+          // Copy failed: Show error message and open immediately
           showMessage(
             "Copy failed. Please manually copy the text below.",
             "bg-red-500"
           );
+          window.open("https://discord.com/app", "_blank");
         }
-
-        // Open the Discord web app/redirection page
-        window.open("https://discord.com/app", "_blank");
       }
 
       /** Shares content via Signal (Copy to Clipboard and Deep Link) */
       function shareSignal() {
+        const messageBox = document.getElementById("message-box");
         const success = copyContent(contentToShare);
+
         if (success) {
-          // New logic: Copy and explicitly instruct the user to paste
-          showMessage(
-            "Content **copied**! Now, paste it into a group on Signal.",
-            "bg-signal"
-          );
+          messageBox.classList.remove("hidden");
+          messageBox.className =
+            "p-3 mb-4 rounded-lg text-sm font-semibold text-white bg-signal";
+
+          const part1 = "Content **copied**!";
+          const part2 = "Now, paste it into a group on Signal.";
+
+          // Step 1: Show first part immediately
+          messageBox.innerHTML = part1;
+
+          // Step 2: Show second part after 1 second (gradual display)
+          setTimeout(() => {
+            messageBox.innerHTML = part1 + " " + part2;
+          }, 1000);
+
+          // Step 3: Open the app and hide the message after 2 seconds total
+          setTimeout(() => {
+            window.open(
+              `https://signal.me/share/text?text=${encodeURIComponent(
+                contentToShare
+              )}`,
+              "_blank"
+            );
+            messageBox.classList.add("hidden"); // Hide after opening the app
+          }, 2000);
         } else {
+          // Copy failed: Show error message and open immediately
           showMessage(
             "Copy failed. Attempting to open Signal, please manually copy the text below.",
             "bg-red-500"
           );
+          window.open(
+            `https://signal.me/share/text?text=${encodeURIComponent(
+              contentToShare
+            )}`,
+            "_blank"
+          );
         }
-
-        // Open the official signal.me universal link
-        window.open(
-          `https://signal.me/share/text?text=${encodeURIComponent(
-            contentToShare
-          )}`,
-          "_blank"
-        );
       }
     </script>
   </head>
