@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Universal Share (Navigator + Escape)</title>
+    <title>Universal Share (Navigator + Escape) — Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -28,133 +28,197 @@
         font-size: 0.9rem;
         color: #6b7280;
       }
+      .log {
+        font-family: monospace;
+        font-size: 12px;
+        color: #111;
+        background: #f3f4f6;
+        padding: 8px;
+        border-radius: 6px;
+      }
     </style>
   </head>
   <body class="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
     <div class="w-full max-w-lg bg-white p-6 md:p-8 rounded-xl shadow-2xl">
-      <h1 class="text-3xl font-extrabold text-gray-800 mb-2">
-        Universal Share (Navigator + Escape)
+      <h1 class="text-2xl font-extrabold text-gray-800 mb-2">
+        Universal Share (Navigator + Escape) — Fixed
       </h1>
       <p class="note mb-4">
-        Click an app below. This will always open an external page (browser).
-        The external page will immediately attempt the native
-        <code>navigator.share()</code> call and do nothing else if it fails.
+        Click any button. This will always open the external page (same page
+        with query params). The external page will immediately attempt
+        <code>navigator.share()</code> on load and will do nothing else if it
+        fails.
       </p>
 
-      <div id="message-box" class="hidden"></div>
-
-      <div class="space-y-4">
+      <div class="space-y-3 mb-4">
         <button
           onclick="onChoose('telegram')"
-          class="platform-button w-full bg-[#229ED9] text-white p-4 rounded-lg font-bold"
+          class="platform-button w-full bg-[#229ED9] text-white p-3 rounded-lg font-bold"
         >
           Share → Telegram (open external)
         </button>
         <button
           onclick="onChoose('whatsapp')"
-          class="platform-button w-full bg-[#25D366] text-white p-4 rounded-lg font-bold"
+          class="platform-button w-full bg-[#25D366] text-white p-3 rounded-lg font-bold"
         >
           Share → WhatsApp (open external)
         </button>
         <button
           onclick="onChoose('discord')"
-          class="platform-button w-full bg-[#5865F2] text-white p-4 rounded-lg font-bold"
+          class="platform-button w-full bg-[#5865F2] text-white p-3 rounded-lg font-bold"
         >
           Share → Discord (open external)
         </button>
         <button
           onclick="onChoose('signal')"
-          class="platform-button w-full bg-[#3A76F0] text-white p-4 rounded-lg font-bold"
+          class="platform-button w-full bg-[#3A76F0] text-white p-3 rounded-lg font-bold"
         >
           Share → Signal (open external)
         </button>
       </div>
 
-      <div class="mt-6 pt-4 border-t">
+      <div class="mt-4 pt-4 border-t">
         <h3 class="text-lg font-bold text-gray-700 mb-2">Content to Share:</h3>
         <pre
           class="bg-gray-50 p-3 rounded-lg text-sm text-gray-800 overflow-x-auto"
           id="share-content-preview"
         ></pre>
       </div>
+
+      <div class="mt-4">
+        <h4 class="text-sm font-semibold text-gray-600 mb-2">
+          Debug log (copy/paste if needed)
+        </h4>
+        <div id="debug" class="log">— logs will appear here —</div>
+      </div>
     </div>
 
     <script>
-          // Content to share
-          const SHARE_TEXT = `SECRET SLUT 🤫🔞 🔗
-      tegram.me/o3hatzB969EyZDg8
-      https://tegram.me/XDOUBLEBANG
-      xtelegram.me/RATPIMAX
-      JOIN Check it Out6`;
-          const SHARE_URL = 'https://tegram.me/XDOUBLEBANG';
-          const CONTENT = SHARE_TEXT + "
+      // content
+      const SHARE_TEXT = `SECRET SLUT 🤫🔞 🔗
+tegram.me/o3hatzB969EyZDg8
+https://tegram.me/XDOUBLEBANG
+xtelegram.me/RATPIMAX
+JOIN Check it Out6`;
+      const SHARE_URL = "https://tegram.me/XDOUBLEBANG";
+      const CONTENT = SHARE_TEXT + "\n\n" + SHARE_URL;
+      document.getElementById("share-content-preview").textContent = CONTENT;
 
-      " + SHARE_URL;
+      // debug helper
+      function debug(msg) {
+        console.log(msg);
+        const el = document.getElementById("debug");
+        el.textContent =
+          new Date().toLocaleTimeString() + " — " + msg + "\n" + el.textContent;
+      }
 
-          document.getElementById('share-content-preview').textContent = CONTENT;
+      // detect Telegram WebApp (mini app)
+      function inTelegramWebApp() {
+        return !!(window.Telegram && window.Telegram.WebApp);
+      }
 
-          // Detect Telegram WebApp (Mini App)
-          function inTelegramWebApp() {
-            return !!(window.Telegram && window.Telegram.WebApp);
+      // build escape url
+      function buildEscapeUrl(platform) {
+        const encoded = encodeURIComponent(CONTENT);
+        return `${location.origin}${
+          location.pathname
+        }?platform=${encodeURIComponent(platform)}&content=${encoded}`;
+      }
+
+      // robust method to open external url
+      function openExternalUrl(url) {
+        debug("openExternalUrl: trying Telegram.WebApp.openLink if available");
+
+        // 1) try Telegram.WebApp.openLink(url) if present and callable
+        try {
+          if (
+            inTelegramWebApp() &&
+            typeof Telegram.WebApp.openLink === "function"
+          ) {
+            debug("Calling Telegram.WebApp.openLink(url)");
+            Telegram.WebApp.openLink(url); // no options object to avoid throws
+            return { method: "webapp.openLink" };
           }
+        } catch (e) {
+          debug("Telegram.WebApp.openLink threw: " + String(e));
+          // fall through to anchor fallback
+        }
 
-          // Show temporary message
-          function showMessage(msg, cls = 'bg-gray-500') {
-            const box = document.getElementById('message-box');
-            box.innerHTML = msg;
-            box.className = `p-3 mb-4 rounded-lg text-sm font-semibold text-white ${cls}`;
-            box.classList.remove('hidden');
-            setTimeout(() => box.classList.add('hidden'), 3000);
+        // 2) anchor click fallback (best cross-webview trick)
+        try {
+          debug("Attempting anchor-click fallback (target=_blank)");
+          const a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          // make it invisible and append
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return { method: "anchor-click" };
+        } catch (e) {
+          debug("Anchor click fallback threw: " + String(e));
+        }
+
+        // 3) final fallback: location.href (last resort)
+        try {
+          debug("Falling back to window.location.href = url");
+          window.location.href = url;
+          return { method: "location-href" };
+        } catch (e) {
+          debug("location.href fallback threw: " + String(e));
+        }
+
+        debug("All methods failed to open URL");
+        return { method: "none" };
+      }
+
+      // invoked on button press
+      function onChoose(platform) {
+        debug(
+          `Button pressed: ${platform} — inTelegramWebApp=${inTelegramWebApp()}`
+        );
+        const escapeUrl = buildEscapeUrl(platform);
+        const result = openExternalUrl(escapeUrl);
+        debug("openExternalUrl result: " + JSON.stringify(result));
+      }
+
+      // auto-run on external page: tries navigator.share and does NOTHING else if it fails
+      async function autoRunFromParams() {
+        const params = new URLSearchParams(location.search);
+        const platform = params.get("platform");
+        const encoded = params.get("content");
+        if (!platform) {
+          debug("No platform param present on load — not running auto share");
+          return;
+        }
+        const text = encoded ? decodeURIComponent(encoded) : CONTENT;
+        debug(
+          `External page detected (platform=${platform}). Attempting navigator.share()...`
+        );
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: "Share", text, url: SHARE_URL });
+            debug("navigator.share() succeeded on external page");
+          } catch (err) {
+            debug(
+              "navigator.share() FAILED on external page — per instructions, doing nothing else. Error: " +
+                String(err)
+            );
           }
+        } else {
+          debug(
+            "navigator.share not available on external page — per instructions, doing nothing."
+          );
+        }
+      }
 
-          // Called when user picks a platform
-          function onChoose(platform) {
-            // Build escape URL which includes the chosen platform and content
-            const encoded = encodeURIComponent(CONTENT);
-            const escapeUrl = `${location.origin}${location.pathname}?platform=${encodeURIComponent(platform)}&content=${encoded}`;
-
-            // Always open the external page. Use Telegram.WebApp.openLink when inside the Mini App to force external open.
-            if (inTelegramWebApp()) {
-              try {
-                Telegram.WebApp.openLink(escapeUrl, { try_instant_view: false });
-                return;
-              } catch (e) {
-                // if that fails, fall through to location change
-                console.warn('openLink failed, falling back to direct navigation', e);
-              }
-            }
-
-            // Not in Telegram Mini App (or openLink failed) — navigate to external page (same page with params)
-            window.location.href = escapeUrl;
-          }
-
-          // On the external page: if platform param exists, immediately call navigator.share and do NOTHING else if it fails
-          async function autoRunFromParams() {
-            const params = new URLSearchParams(location.search);
-            const platform = params.get('platform');
-            const encodedContent = params.get('content');
-            if (!platform) return; // nothing to auto-run
-
-            const text = encodedContent ? decodeURIComponent(encodedContent) : CONTENT;
-
-            if (navigator.share) {
-              try {
-                await navigator.share({ title: 'Share', text, url: SHARE_URL });
-                // success - do not perform any fallbacks
-              } catch (err) {
-                // deliberately do nothing on failure per your instruction
-                console.warn('navigator.share failed on redirect page — no fallbacks will be performed', err);
-              }
-            } else {
-              // Deliberately do nothing when navigator.share is not available
-              console.warn('navigator.share not available on redirect page — no fallbacks will be performed');
-            }
-          }
-
-          // Run on load
-          window.addEventListener('DOMContentLoaded', () => {
-            autoRunFromParams();
-          });
+      // on load
+      window.addEventListener("DOMContentLoaded", () => {
+        debug("page loaded. inTelegramWebApp=" + inTelegramWebApp());
+        autoRunFromParams();
+      });
     </script>
   </body>
 </html>
