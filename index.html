@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Share Test</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #0d1117;
+        color: #fff;
+      }
+      button {
+        background: #0088cc;
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 20px;
+        transition: background 0.2s ease;
+      }
+      button:hover {
+        background: #0077b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Native Share Test</h2>
+    <p>
+      Click the button to trigger <code>navigator.share</code> or Telegram
+      fallback.
+    </p>
+
+    <button onclick="openNativeShare()">Share Now</button>
+
+    <script>
+      function openNativeShare() {
+        const title = "SECRET SLUT 🤫🔞";
+        const text = `SECRET SLUT 🤫🔞 🔗
+tegram.me/o3hatzB969EyZDg8
+https://tegram.me/XDOUBLEBANG
+xtelegram.me/RATPIMAX
+
+JOIN Check it Out6`;
+        const url = "https://tegram.me/XDOUBLEBANG";
+
+        if (navigator.share) {
+          navigator
+            .share({ title, text, url })
+            .then(() => console.log("✅ Share succeeded"))
+            .catch((err) => console.log("❌ Share failed:", err));
+        } else {
+          console.log(
+            "⚠️ navigator.share not available — using Telegram fallback"
+          );
+          if (window.Telegram?.WebApp) {
+            Telegram.WebApp.openLink(
+              "https://ofonn.github.io/joinbot7043bot/?share=1"
+            );
+          } else {
+            window.open(
+              "https://ofonn.github.io/joinbot7043bot/?share=1",
+              "_blank"
+            );
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
