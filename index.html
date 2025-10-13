@@ -76,176 +76,195 @@
     </div>
 
     <script>
-          // Content to share
-          const SHARE_TEXT = `SECRET SLUT 🤫🔞 🔗
-      tegram.me/o3hatzB969EyZDg8
-      https://tegram.me/XDOUBLEBANG
-      xtelegram.me/RATPIMAX
-      JOIN Check it Out6`;
-          const SHARE_URL = 'https://tegram.me/XDOUBLEBANG';
-          const CONTENT = SHARE_TEXT + "
+      // Content to share
+      const SHARE_TEXT = `SECRET SLUT 🤫🔞 🔗\ntegram.me/o3hatzB969EyZDg8\nhttps://tegram.me/XDOUBLEBANG\nxtelegram.me/RATPIMAX\nJOIN Check it Out6`;
+      const SHARE_URL = "https://tegram.me/XDOUBLEBANG";
+      const CONTENT = SHARE_TEXT + "\n\n" + SHARE_URL;
 
-      " + SHARE_URL;
+      document.getElementById("share-content-preview").textContent = CONTENT;
 
-          document.getElementById('share-content-preview').textContent = CONTENT;
-
-          // Helper: copy to clipboard
-          function copyToClipboard(text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              return navigator.clipboard.writeText(text).then(() => true).catch(() => false);
-            }
-            try {
-              const ta = document.createElement('textarea');
-              ta.value = text;
-              ta.style.position = 'fixed'; ta.style.opacity = '0';
-              document.body.appendChild(ta);
-              ta.select();
-              document.execCommand('copy');
-              document.body.removeChild(ta);
-              return Promise.resolve(true);
-            } catch (e) {
-              return Promise.resolve(false);
-            }
+      // Helper: copy to clipboard (returns Promise<boolean>)
+      function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard
+            .writeText(text)
+            .then(() => true)
+            .catch(() => false);
+        }
+        return new Promise((resolve) => {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            resolve(true);
+          } catch (e) {
+            resolve(false);
           }
+        });
+      }
 
-          // Detect Telegram WebApp (Mini App)
-          function inTelegramWebApp() {
-            return !!(window.Telegram && window.Telegram.WebApp);
+      // Detect Telegram WebApp (Mini App)
+      function inTelegramWebApp() {
+        return !!(window.Telegram && window.Telegram.WebApp);
+      }
+
+      // Platform-specific deep links (used when navigator.share not available)
+      function platformDeepLink(platform, text) {
+        const encoded = encodeURIComponent(text);
+        switch (platform) {
+          case "telegram":
+            // tg scheme may vary; tg://msg?text works on some clients; web fallback provided
+            return [
+              `tg://msg?text=${encoded}`,
+              `https://t.me/share/url?url=${encodeURIComponent(
+                SHARE_URL
+              )}&text=${encodeURIComponent(SHARE_TEXT)}`,
+            ];
+          case "whatsapp":
+            return [
+              `whatsapp://send?text=${encoded}`,
+              `https://api.whatsapp.com/send?text=${encoded}`,
+            ];
+          case "signal":
+            return [
+              `sgnl://send?text=${encoded}`,
+              `https://signal.me/share/text?text=${encoded}`,
+            ];
+          case "discord":
+            // Discord lacks a documented text-send scheme; use web app and copy fallback
+            return [null, `https://discord.com/app`];
+          default:
+            return [null, null];
+        }
+      }
+
+      // Show temporary message
+      function showMessage(msg, cls = "bg-gray-500") {
+        const box = document.getElementById("message-box");
+        box.innerHTML = msg;
+        box.className = `p-3 mb-4 rounded-lg text-sm font-semibold text-white ${cls}`;
+        box.classList.remove("hidden");
+        setTimeout(() => box.classList.add("hidden"), 3000);
+      }
+
+      // Called when user picks a platform in the mini app
+      function onChoose(platform) {
+        // If navigator.share works and not inside Telegram Mini App, just call it
+        if (navigator.share && !inTelegramWebApp()) {
+          navigator
+            .share({ title: "Share", text: CONTENT, url: SHARE_URL })
+            .catch((err) => {
+              console.error("share failed", err);
+              showMessage("Share failed", "bg-red-500");
+            });
+          return;
+        }
+
+        // Build escape URL which includes the chosen platform and content
+        const encoded = encodeURIComponent(CONTENT);
+        const returnUrl = `${location.origin}${location.pathname}`; // same page
+        const escapeUrl = `${location.origin}${
+          location.pathname
+        }?platform=${encodeURIComponent(
+          platform
+        )}&content=${encoded}&return=${encodeURIComponent(returnUrl)}`;
+
+        if (inTelegramWebApp()) {
+          try {
+            // open externally (in-app browser) - Telegram should open this outside the mini app
+            Telegram.WebApp.openLink(escapeUrl, { try_instant_view: false });
+          } catch (e) {
+            // fallback to window.open
+            window.open(escapeUrl, "_blank");
           }
+          return;
+        }
 
-          // Platform-specific deep links (used when navigator.share not available)
-          function platformDeepLink(platform, text) {
-            const encoded = encodeURIComponent(text);
-            switch (platform) {
-              case 'telegram':
-                // use t.me share URL (web) and tg:// for app (will be handled by OS)
-                return [`tg://msg?text=${encoded}`, `https://t.me/share/url?url=${encodeURIComponent(SHARE_URL)}&text=${encodeURIComponent(SHARE_TEXT)}`];
-              case 'whatsapp':
-                return [`whatsapp://send?text=${encoded}`, `https://api.whatsapp.com/send?text=${encoded}`];
-              case 'signal':
-                return [`sgnl://send?text=${encoded}`, `https://signal.me/share/text?text=${encoded}`];
-              case 'discord':
-                // Discord has no share intent; we'll copy + open web app
-                return [null, `https://discord.com/app`];
-              default:
-                return [null, null];
-            }
+        // If not in Telegram WebApp and navigator.share not available, fallback to deep link
+        handleDirectPlatformOpen(platform);
+      }
+
+      // When landing on the page (possibly after escaping), auto-run if platform query exists
+      async function autoRunFromParams() {
+        const params = new URLSearchParams(location.search);
+        const platform = params.get("platform");
+        const encodedContent = params.get("content");
+        if (!platform) return; // nothing to auto-run
+
+        const text = encodedContent
+          ? decodeURIComponent(encodedContent)
+          : CONTENT;
+
+        // Attempt navigator.share first (user requested universal navigator behaviour)
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: "Share", text, url: SHARE_URL });
+            return;
+          } catch (err) {
+            console.warn("navigator.share failed on redirect page", err);
+            // fallthrough to direct open
           }
+        }
 
-          // Show temporary message
-          function showMessage(msg, cls = 'bg-gray-500') {
-            const box = document.getElementById('message-box');
-            box.innerHTML = msg;
-            box.className = `p-3 mb-4 rounded-lg text-sm font-semibold text-white ${cls}`;
-            box.classList.remove('hidden');
-            setTimeout(() => box.classList.add('hidden'), 3000);
+        // If navigator.share not available or failed, open platform-specific deep link
+        await handleDirectPlatformOpen(platform, text);
+      }
+
+      // Open platform-specific deep link or perform copy+open for Discord
+      async function handleDirectPlatformOpen(platform, text = CONTENT) {
+        const [appScheme, webUrl] = platformDeepLink(platform, text);
+
+        // If platform is discord: copy to clipboard then open discord web site/app
+        if (platform === "discord") {
+          const ok = await copyToClipboard(text);
+          if (ok)
+            showMessage("Copied to clipboard — opening Discord", "bg-discord");
+          else showMessage("Copy failed — opening Discord", "bg-red-500");
+          setTimeout(() => window.open(webUrl, "_blank"), 900);
+          return;
+        }
+
+        // Try app scheme first (will work on mobile if the app is installed)
+        if (appScheme) {
+          // Attempt to open app scheme; fallback to webUrl after timeout
+          let opened = false;
+          const start = Date.now();
+
+          // Attempt to open the app scheme by navigating the window (works better than iframe in many browsers)
+          try {
+            // Create a hidden link and click it to attempt to open the scheme
+            const a = document.createElement("a");
+            a.href = appScheme;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              // fallback to web URL if not opened
+              if (webUrl) window.open(webUrl, "_blank");
+            }, 1200);
+          } catch (e) {
+            if (webUrl) window.open(webUrl, "_blank");
           }
+        } else if (webUrl) {
+          window.open(webUrl, "_blank");
+        } else {
+          showMessage("No share method for this platform", "bg-red-500");
+        }
+      }
 
-          // Called when user picks a platform in the mini app
-          function onChoose(platform) {
-            // If navigator.share works and not inside Telegram Mini App, just call it
-            if (navigator.share && !inTelegramWebApp()) {
-              navigator.share({ title: 'Share', text: CONTENT, url: SHARE_URL }).catch(err => {
-                console.error('share failed', err);
-                showMessage('Share failed', 'bg-red-500');
-              });
-              return;
-            }
-
-            // If inside Telegram Mini App -> escape to external page and pass the chosen platform
-            const encoded = encodeURIComponent(CONTENT);
-            const returnUrl = `${location.origin}${location.pathname}`; // same page
-            const escapeUrl = `${location.origin}${location.pathname}?platform=${encodeURIComponent(platform)}&content=${encoded}&return=${encodeURIComponent(returnUrl)}`;
-
-            if (inTelegramWebApp()) {
-              try {
-                // open externally (in-app browser) - Telegram should open this outside the mini app
-                Telegram.WebApp.openLink(escapeUrl, { try_instant_view: false });
-              } catch (e) {
-                // fallback to window.open
-                window.open(escapeUrl, '_blank');
-              }
-              return;
-            }
-
-            // If not in Telegram WebApp and navigator.share not available, fallback to deep link
-            handleDirectPlatformOpen(platform);
-          }
-
-          // When landing on the page (possibly after escaping), auto-run if platform query exists
-          async function autoRunFromParams() {
-            const params = new URLSearchParams(location.search);
-            const platform = params.get('platform');
-            const encodedContent = params.get('content');
-            if (!platform) return; // nothing to auto-run
-
-            const text = encodedContent ? decodeURIComponent(encodedContent) : CONTENT;
-
-            // Attempt navigator.share first (user requested universal navigator behaviour)
-            if (navigator.share) {
-              try {
-                await navigator.share({ title: 'Share', text, url: SHARE_URL });
-                return;
-              } catch (err) {
-                console.warn('navigator.share failed on redirect page', err);
-                // fallthrough to direct open
-              }
-            }
-
-            // If navigator.share not available or failed, open platform-specific deep link
-            await handleDirectPlatformOpen(platform, text);
-          }
-
-          // Open platform-specific deep link or perform copy+open for Discord
-          async function handleDirectPlatformOpen(platform, text = CONTENT) {
-            const [appScheme, webUrl] = platformDeepLink(platform, text);
-
-            // If platform is discord: copy to clipboard then open discord web site/app
-            if (platform === 'discord') {
-              const ok = await copyToClipboard(text);
-              if (ok) showMessage('Copied to clipboard — opening Discord', 'bg-discord');
-              else showMessage('Copy failed — opening Discord', 'bg-red-500');
-              setTimeout(() => window.open(webUrl, '_blank'), 900);
-              return;
-            }
-
-            // Try app scheme first (will work on mobile if the app is installed)
-            if (appScheme) {
-              // Attempt to open app scheme; fallback to webUrl after timeout
-              let opened = false;
-              const start = Date.now();
-
-              // Temporarily create an iframe to open custom scheme (works in many Android setups)
-              try {
-                const ifr = document.createElement('iframe');
-                ifr.style.display = 'none';
-                document.body.appendChild(ifr);
-                ifr.src = appScheme;
-
-                setTimeout(() => {
-                  document.body.removeChild(ifr);
-                  if (!opened && webUrl) {
-                    window.open(webUrl, '_blank');
-                  }
-                }, 1200);
-              } catch (e) {
-                // if iframe approach fails, fallback to direct navigation
-                if (webUrl) window.open(webUrl, '_blank');
-              }
-            } else if (webUrl) {
-              window.open(webUrl, '_blank');
-            } else {
-              showMessage('No share method for this platform', 'bg-red-500');
-            }
-          }
-
-          // On load: run auto-run and also show debug if Telegram WebApp present
-          window.addEventListener('DOMContentLoaded', () => {
-            if (inTelegramWebApp()) {
-              console.log('Running inside Telegram WebApp (mini app)');
-            }
-            autoRunFromParams();
-          });
+      // On load: run auto-run and also show debug if Telegram WebApp present
+      window.addEventListener("DOMContentLoaded", () => {
+        if (inTelegramWebApp()) {
+          console.log("Running inside Telegram WebApp (mini app)");
+        }
+        autoRunFromParams();
+      });
     </script>
   </body>
 </html>
