@@ -43,34 +43,21 @@
 
     <script>
       function openNativeShare() {
-        const title = "SECRET SLUT 🤫🔞";
-        const text = `SECRET SLUT 🤫🔞 🔗
-tegram.me/o3hatzB969EyZDg8
-https://tegram.me/XDOUBLEBANG
-xtelegram.me/RATPIMAX
-
-JOIN Check it Out6`;
-        const url = "https://tegram.me/XDOUBLEBANG";
+        console.log("Navigator.share available:", !!navigator.share);
+        console.log("Telegram.WebApp available:", !!window.Telegram?.WebApp);
 
         if (navigator.share) {
           navigator
-            .share({ title, text, url })
-            .then(() => console.log("✅ Share succeeded"))
-            .catch((err) => console.log("❌ Share failed:", err));
+            .share({
+              title: "SECRET SLUT 🤫🔞",
+              text: `SECRET SLUT 🤫🔞 🔗\ntegram.me/o3hatzB969EyZDg8\nhttps://tegram.me/XDOUBLEBANG\nxtelegram.me/RATPIMAX\n\nJOIN Check it Out6`,
+              url: "https://tegram.me/XDOUBLEBANG",
+            })
+            .catch((err) => console.log("Share failed:", err));
         } else {
-          console.log(
-            "⚠️ navigator.share not available — using Telegram fallback"
+          Telegram.WebApp.openLink(
+            "https://ofonn.github.io/joinbot7043bot/?share=1"
           );
-          if (window.Telegram?.WebApp) {
-            Telegram.WebApp.openLink(
-              "https://ofonn.github.io/joinbot7043bot/?share=1"
-            );
-          } else {
-            window.open(
-              "https://ofonn.github.io/joinbot7043bot/?share=1",
-              "_blank"
-            );
-          }
         }
       }
     </script>
